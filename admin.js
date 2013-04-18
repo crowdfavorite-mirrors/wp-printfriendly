@@ -4,11 +4,56 @@ jQuery(document).ready(function() {
     if (jQuery('.show_list:checked').length == 0) {
       jQuery('.content_placement').hide('slow');
       jQuery('.content_placement input').attr('disabled','disabled');
+      jQuery('.show_template').attr('checked', 'checked');
     } else {
+      jQuery('.show_template').attr('checked', false);
+      jQuery('.content_placement').show('slow');
+      jQuery('.content_placement input').removeAttr('disabled');
+    }
+
+    var postName = 'printfriendly_option[show_on_posts]';
+    var homeName = 'printfriendly_option[show_on_homepage]';
+
+    var optionName = jQuery(this).attr('name');
+    if (optionName == homeName || optionName == postName){
+      if(jQuery(this).is(':checked')) {
+        jQuery('#pf-categories').show('slow');
+      } else if(!jQuery('input[name="' + homeName + '"]').is(':checked')
+                && !jQuery('input[name="' + postName + '"]').is(':checked')) {
+        jQuery('#pf-categories').hide('slow');
+      }
+    }
+  }).change();
+
+  jQuery('.show_template').change(function() {
+    if(jQuery(this).is(':checked')) {
+      jQuery('.show_list').attr('checked', false);
+      jQuery('.show_list').attr('disabled', 'disabled');
+      jQuery('.content_placement').hide('slow');
+      jQuery('.content_placement input').attr('disabled','disabled');
+      jQuery('#pf-categories-metabox').hide('slow');
+    } else {
+      jQuery('.show_list').removeAttr('disabled');
       jQuery('.content_placement').show('slow');
       jQuery('.content_placement input').removeAttr('disabled');
     }
   }).change();
+
+  jQuery('#toggle-categories').click(function() {
+    if(jQuery('#pf-categories-metabox').is(':visible')) {
+      jQuery('#pf-categories-metabox').hide('slow');
+    } else {
+      jQuery('#pf-categories-metabox').show('slow');
+    }
+  });
+
+  jQuery(document).mouseup(function (e) {
+    var container = jQuery("#pf-categories");
+
+    if (container.has(e.target).length === 0) {
+      jQuery('#pf-categories-metabox').hide('slow');
+    }
+  });
 
   jQuery('#colorSelector').ColorPicker({
     color: jQuery('#text_color').val(),
@@ -59,18 +104,26 @@ jQuery(document).ready(function() {
 
   function pf_initialize_preview(urlInputSelector, previewSelector) {
     var el = jQuery(urlInputSelector);
+    var imgUrl = jQuery.trim(el.val());
     var preview = jQuery(previewSelector + '-preview');
     var error = jQuery(previewSelector + '-error');
     el.bind('input paste change keyup', function() {
       setTimeout(function() {
-        var img = jQuery('<img />').on('error', function() {
-          preview.html('');
-          if(img.attr('src') != '') {
-            error.html('<div class="error settings-error"><p><strong>Invalid Image URL</strong></p></div>');
-          }
-        }).attr('src', jQuery.trim(el.val()));
-        error.html('');
-        preview.html('').append(img);
+        // ie shows error if we try to merge the two below into a single statement
+        var img = jQuery('<img/>');
+        var imgUrl = jQuery.trim(el.val());
+        img.load(function() {
+            error.html('');
+            preview.html('').append(img);})
+          .error(function() {
+            preview.html('');
+            if(img.attr('src') != '') {
+              error.html('<div class="error settings-error"><p><strong>Invalid Image URL</strong></p></div>');
+            }
+          }).attr('src', imgUrl);
+        // hide error for empty url
+        if(imgUrl == '')
+          error.html('');
       }, 100);
     });
   }
@@ -140,7 +193,6 @@ jQuery(document).ready(function() {
   }
 
   function pf_reset_style() {
-    console.log('reseting styles');
     jQuery('.printfriendly-text2').css('font-size',14);
     jQuery('.printfriendly-text2').css('color','#000000');
   }
@@ -150,5 +202,53 @@ jQuery(document).ready(function() {
     size = jQuery('#text_size').val();
     jQuery('.printfriendly-text2').css('font-size',parseInt(size));
   }
+
+  // postboxes setup
+  jQuery('.if-js-closed').removeClass('if-js-closed').addClass('closed');
+
+  // categories checkboxes
+  var category_ids = jQuery('#category_ids').val().split(',');
+  if(category_ids[0] == 'all') {
+    var ids = [];
+    jQuery('#categorydiv :checkbox').each(function() {
+      jQuery(this).attr('checked', 'checked');
+    });
+    jQuery('#category-all :checkbox').each(function() {
+      ids.push(jQuery(this).val());
+    });
+    // for older wp versions we do not have per category settings so
+    // ids array will be empty and in that case we shouldn't replace 'all'
+    if(ids.length != 0) {
+      jQuery('#category_ids').val(ids.join(','));
+    }
+  } else {
+
+    jQuery('#categorydiv :checkbox').each(function() {
+      if(jQuery.inArray(jQuery(this).val(), category_ids) != -1) {
+        jQuery(this).attr('checked', 'checked');
+      }
+    });
+  }
+
+  jQuery('#categorydiv :checkbox').click(function() {
+    var values = jQuery('#category_ids').val();
+    var ids = [];
+    if(values != '')
+      ids = values.split(',');
+
+    var id = jQuery(this).val();
+
+    if(jQuery(this).is(':checked'))
+      ids.push(id);
+    else {
+      ids = jQuery.grep(ids, function(value) {
+        return value != id;
+      });
+    }
+
+    jQuery('#category_ids').val(ids.join(','));
+  });
+
+  // page checkboxes TODO...
 
 });
